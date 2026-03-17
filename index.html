@@ -2,27 +2,16 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
-    />
-    <meta
-      name="description"
-      content="nXuu Trading Checklist — Complete all steps before entering a trade."
-    />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="description" content="nXuu Trading Checklist — Complete all steps before entering a trade." />
     <meta name="theme-color" content="#f2ede4" />
-
-    <!-- Open Graph (looks good when shared on Discord, Twitter, etc.) -->
     <meta property="og:title" content="nXuu CheckList" />
-    <meta
-      property="og:description"
-      content="A structured pre-trade checklist for disciplined execution."
-    />
+    <meta property="og:description" content="A structured pre-trade checklist for disciplined execution." />
     <meta property="og:type" content="website" />
 
     <title>nXuu CheckList</title>
 
-    <!-- ── ICONS ── -->
+    <!-- Icons -->
     <link rel="apple-touch-icon" href="apple-touch-icon.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -31,26 +20,26 @@
     <link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32.png" />
     <link rel="manifest" href="manifest.json" />
 
-    
-    <!-- Google Fonts -->
+    <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Outfit:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap"
-      rel="stylesheet"
-    />
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Outfit:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
 
-    <!-- Stylesheet -->
     <link rel="stylesheet" href="css/style.css" />
   </head>
   <body>
+
+    <!-- Confetti layer -->
+    <div id="confetti-container" aria-hidden="true"></div>
+
     <main class="main">
+
       <!-- ── HEADER ── -->
       <header class="hd">
         <div class="hd-top">
           <div class="hd-badge">
             <span class="hd-badge-dot"></span>
-            v 2.0 Refined
+            v 4.0 Refined
           </div>
           <span class="hd-handle">@_nxuu_</span>
         </div>
@@ -66,15 +55,18 @@
         <div class="prog-num" id="prog-big">0<span> / 10</span></div>
         <div class="prog-right">
           <div class="prog-label">Checklist Progress</div>
-          <div
-            class="prog-track"
-            role="progressbar"
-            aria-valuenow="0"
-            aria-valuemin="0"
-            aria-valuemax="10"
-          >
+          <div class="prog-track" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="10">
             <div class="prog-fill" id="fill"></div>
           </div>
+        </div>
+      </div>
+
+      <!-- ── COMPLETE BANNER ── -->
+      <div class="complete-banner" id="complete-banner" aria-live="polite">
+        <div class="complete-banner-icon">✦</div>
+        <div>
+          <div class="complete-banner-text">Checklist complete — you're ready to trade.</div>
+          <div class="complete-banner-sub">Stay disciplined. Follow the rule.</div>
         </div>
       </div>
 
@@ -88,13 +80,7 @@
           <div class="sec-rule"></div>
         </div>
         <ul class="steps-wrap" role="list">
-          <li
-            class="step"
-            role="listitem"
-            onclick="tog(this)"
-            tabindex="0"
-            onkeydown="handleKey(event, this)"
-          >
+          <li class="step" onclick="tog(this)" tabindex="0" onkeydown="handleKey(event, this)">
             <div class="step-left-bar"></div>
             <span class="step-num">01</span>
             <div class="step-body">
@@ -108,31 +94,10 @@
               </div>
             </div>
             <div class="step-cb" aria-hidden="true">
-              <svg
-                class="cb-svg"
-                width="10"
-                height="8"
-                viewBox="0 0 10 8"
-                fill="none"
-                aria-hidden="true"
-              >
-                <path
-                  d="M1 4L3.8 7L9 1"
-                  stroke="white"
-                  stroke-width="1.6"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-              </svg>
+              <svg class="cb-svg" width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.8 7L9 1" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </div>
           </li>
-          <li
-            class="step"
-            role="listitem"
-            onclick="tog(this)"
-            tabindex="0"
-            onkeydown="handleKey(event, this)"
-          >
+          <li class="step" onclick="tog(this)" tabindex="0" onkeydown="handleKey(event, this)">
             <div class="step-left-bar"></div>
             <span class="step-num">02</span>
             <div class="step-body">
@@ -140,22 +105,7 @@
               <p class="step-title">Price near <b>PD Array / POI</b></p>
             </div>
             <div class="step-cb" aria-hidden="true">
-              <svg
-                class="cb-svg"
-                width="10"
-                height="8"
-                viewBox="0 0 10 8"
-                fill="none"
-                aria-hidden="true"
-              >
-                <path
-                  d="M1 4L3.8 7L9 1"
-                  stroke="white"
-                  stroke-width="1.6"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-              </svg>
+              <svg class="cb-svg" width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.8 7L9 1" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </div>
           </li>
         </ul>
@@ -169,13 +119,7 @@
           <div class="sec-rule"></div>
         </div>
         <ul class="steps-wrap" role="list">
-          <li
-            class="step"
-            role="listitem"
-            onclick="tog(this)"
-            tabindex="0"
-            onkeydown="handleKey(event, this)"
-          >
+          <li class="step" onclick="tog(this)" tabindex="0" onkeydown="handleKey(event, this)">
             <div class="step-left-bar"></div>
             <span class="step-num">03</span>
             <div class="step-body">
@@ -189,31 +133,10 @@
               </div>
             </div>
             <div class="step-cb" aria-hidden="true">
-              <svg
-                class="cb-svg"
-                width="10"
-                height="8"
-                viewBox="0 0 10 8"
-                fill="none"
-                aria-hidden="true"
-              >
-                <path
-                  d="M1 4L3.8 7L9 1"
-                  stroke="white"
-                  stroke-width="1.6"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-              </svg>
+              <svg class="cb-svg" width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.8 7L9 1" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </div>
           </li>
-          <li
-            class="step"
-            role="listitem"
-            onclick="tog(this)"
-            tabindex="0"
-            onkeydown="handleKey(event, this)"
-          >
+          <li class="step" onclick="tog(this)" tabindex="0" onkeydown="handleKey(event, this)">
             <div class="step-left-bar"></div>
             <span class="step-num">04</span>
             <div class="step-body">
@@ -221,22 +144,7 @@
               <p class="step-title"><b>Liquidity sweep</b> occurs first</p>
             </div>
             <div class="step-cb" aria-hidden="true">
-              <svg
-                class="cb-svg"
-                width="10"
-                height="8"
-                viewBox="0 0 10 8"
-                fill="none"
-                aria-hidden="true"
-              >
-                <path
-                  d="M1 4L3.8 7L9 1"
-                  stroke="white"
-                  stroke-width="1.6"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-              </svg>
+              <svg class="cb-svg" width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.8 7L9 1" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </div>
           </li>
         </ul>
@@ -250,13 +158,7 @@
           <div class="sec-rule"></div>
         </div>
         <ul class="steps-wrap" role="list">
-          <li
-            class="step"
-            role="listitem"
-            onclick="tog(this)"
-            tabindex="0"
-            onkeydown="handleKey(event, this)"
-          >
+          <li class="step" onclick="tog(this)" tabindex="0" onkeydown="handleKey(event, this)">
             <div class="step-left-bar"></div>
             <span class="step-num">05</span>
             <div class="step-body">
@@ -264,31 +166,10 @@
               <p class="step-title">Candle closes <b>back inside zone</b></p>
             </div>
             <div class="step-cb" aria-hidden="true">
-              <svg
-                class="cb-svg"
-                width="10"
-                height="8"
-                viewBox="0 0 10 8"
-                fill="none"
-                aria-hidden="true"
-              >
-                <path
-                  d="M1 4L3.8 7L9 1"
-                  stroke="white"
-                  stroke-width="1.6"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-              </svg>
+              <svg class="cb-svg" width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.8 7L9 1" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </div>
           </li>
-          <li
-            class="step"
-            role="listitem"
-            onclick="tog(this)"
-            tabindex="0"
-            onkeydown="handleKey(event, this)"
-          >
+          <li class="step" onclick="tog(this)" tabindex="0" onkeydown="handleKey(event, this)">
             <div class="step-left-bar"></div>
             <span class="step-num">06</span>
             <div class="step-body">
@@ -296,22 +177,7 @@
               <p class="step-title">Clear <b>MSS / CHoCH</b></p>
             </div>
             <div class="step-cb" aria-hidden="true">
-              <svg
-                class="cb-svg"
-                width="10"
-                height="8"
-                viewBox="0 0 10 8"
-                fill="none"
-                aria-hidden="true"
-              >
-                <path
-                  d="M1 4L3.8 7L9 1"
-                  stroke="white"
-                  stroke-width="1.6"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-              </svg>
+              <svg class="cb-svg" width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.8 7L9 1" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </div>
           </li>
         </ul>
@@ -325,13 +191,7 @@
           <div class="sec-rule"></div>
         </div>
         <ul class="steps-wrap" role="list">
-          <li
-            class="step"
-            role="listitem"
-            onclick="tog(this)"
-            tabindex="0"
-            onkeydown="handleKey(event, this)"
-          >
+          <li class="step" onclick="tog(this)" tabindex="0" onkeydown="handleKey(event, this)">
             <div class="step-left-bar"></div>
             <span class="step-num">07</span>
             <div class="step-body">
@@ -339,56 +199,18 @@
               <p class="step-title">Entry on <b>LTF PD Array</b></p>
             </div>
             <div class="step-cb" aria-hidden="true">
-              <svg
-                class="cb-svg"
-                width="10"
-                height="8"
-                viewBox="0 0 10 8"
-                fill="none"
-                aria-hidden="true"
-              >
-                <path
-                  d="M1 4L3.8 7L9 1"
-                  stroke="white"
-                  stroke-width="1.6"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-              </svg>
+              <svg class="cb-svg" width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.8 7L9 1" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </div>
           </li>
-          <li
-            class="step"
-            role="listitem"
-            onclick="tog(this)"
-            tabindex="0"
-            onkeydown="handleKey(event, this)"
-          >
+          <li class="step" onclick="tog(this)" tabindex="0" onkeydown="handleKey(event, this)">
             <div class="step-left-bar"></div>
             <span class="step-num">08</span>
             <div class="step-body">
               <span class="step-cat">Entry</span>
-              <p class="step-title">
-                Use <b>FVG / OB / IFVG / CISD</b> pullback
-              </p>
+              <p class="step-title">Use <b>FVG / OB / IFVG / CISD</b> pullback</p>
             </div>
             <div class="step-cb" aria-hidden="true">
-              <svg
-                class="cb-svg"
-                width="10"
-                height="8"
-                viewBox="0 0 10 8"
-                fill="none"
-                aria-hidden="true"
-              >
-                <path
-                  d="M1 4L3.8 7L9 1"
-                  stroke="white"
-                  stroke-width="1.6"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-              </svg>
+              <svg class="cb-svg" width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.8 7L9 1" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </div>
           </li>
         </ul>
@@ -402,13 +224,7 @@
           <div class="sec-rule"></div>
         </div>
         <ul class="steps-wrap" role="list">
-          <li
-            class="step"
-            role="listitem"
-            onclick="tog(this)"
-            tabindex="0"
-            onkeydown="handleKey(event, this)"
-          >
+          <li class="step" onclick="tog(this)" tabindex="0" onkeydown="handleKey(event, this)">
             <div class="step-left-bar"></div>
             <span class="step-num">09</span>
             <div class="step-body">
@@ -416,31 +232,10 @@
               <p class="step-title">Minimum <b>RR ≥ 1:2</b></p>
             </div>
             <div class="step-cb" aria-hidden="true">
-              <svg
-                class="cb-svg"
-                width="10"
-                height="8"
-                viewBox="0 0 10 8"
-                fill="none"
-                aria-hidden="true"
-              >
-                <path
-                  d="M1 4L3.8 7L9 1"
-                  stroke="white"
-                  stroke-width="1.6"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-              </svg>
+              <svg class="cb-svg" width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.8 7L9 1" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </div>
           </li>
-          <li
-            class="step"
-            role="listitem"
-            onclick="tog(this)"
-            tabindex="0"
-            onkeydown="handleKey(event, this)"
-          >
+          <li class="step" onclick="tog(this)" tabindex="0" onkeydown="handleKey(event, this)">
             <div class="step-left-bar"></div>
             <span class="step-num">10</span>
             <div class="step-body">
@@ -448,44 +243,34 @@
               <p class="step-title">Risk <b>≤ 1%</b> per trade</p>
             </div>
             <div class="step-cb" aria-hidden="true">
-              <svg
-                class="cb-svg"
-                width="10"
-                height="8"
-                viewBox="0 0 10 8"
-                fill="none"
-                aria-hidden="true"
-              >
-                <path
-                  d="M1 4L3.8 7L9 1"
-                  stroke="white"
-                  stroke-width="1.6"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-              </svg>
+              <svg class="cb-svg" width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.8 7L9 1" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </div>
           </li>
         </ul>
       </section>
+
+      <!-- ── NOTES ── -->
+      <div class="notes-wrap">
+        <div class="notes-header">
+          <span class="notes-icon">✎</span>
+          <span class="notes-label">Trade Notes</span>
+        </div>
+        <textarea
+          id="notesTxt"
+          placeholder="Jot down your reasoning, confluences, or anything about this setup..."
+          spellcheck="false"
+          autocorrect="off"
+        ></textarea>
+      </div>
 
       <!-- ── BOTTOM PANELS ── -->
       <div class="bottom">
         <div class="panel">
           <h3 class="panel-hd">Confluence</h3>
           <ul class="conf-list" role="list">
-            <li class="conf-item">
-              <span class="conf-dot"></span>
-              <span class="conf-text">Session time — London / NY</span>
-            </li>
-            <li class="conf-item">
-              <span class="conf-dot"></span>
-              <span class="conf-text">Golden Fibonacci</span>
-            </li>
-            <li class="conf-item">
-              <span class="conf-dot"></span>
-              <span class="conf-text">Rejection Candles</span>
-            </li>
+            <li class="conf-item"><span class="conf-dot"></span><span class="conf-text">Session time — London / NY</span></li>
+            <li class="conf-item"><span class="conf-dot"></span><span class="conf-text">Golden Fibonacci</span></li>
+            <li class="conf-item"><span class="conf-dot"></span><span class="conf-text">Rejection Candles</span></li>
           </ul>
         </div>
         <div class="panel">
@@ -506,14 +291,22 @@
         </div>
       </div>
 
+
+      <!-- ── MOTIVATIONAL QUOTE ── -->
+      <br>
+      <div class="quote-wrap" onclick="rollQuote()" title="Tap for a new quote">
+        <p id="quote"></p>
+        <p class="quote-hint">tap to refresh</p>
+      </div>
+
       <!-- ── FOOTER ── -->
       <footer class="footer">
         <span class="footer-handle">@_nxuu_</span>
         <button class="reset-btn" id="resetBtn" type="button">↺ Reset</button>
       </footer>
+
     </main>
 
-    <!-- JavaScript -->
     <script src="js/app.js"></script>
   </body>
 </html>
