@@ -2,7 +2,7 @@
  * nXuu CheckList — app.js
  * Author  : @_nxuu_
  * Version : 4.0
- * Features: confetti, step animations, sound effects,
+ * Features: confetti, step animations, sound effects (iOS fixed),
  *           motivational quotes, notes field
  */
 
@@ -39,65 +39,120 @@ const QUOTES = [
 ];
 
 // ── SOUND ENGINE ──────────────────────────────────────────────
-const AudioCtx = window.AudioContext || window.webkitAudioContext;
+/**
+ * iOS Safari requires the AudioContext to be created AND resumed
+ * inside a direct user gesture (touchstart / click).
+ * We do two things to fix this:
+ *   1. Create the AudioContext lazily on first touch anywhere on the page.
+ *   2. Call ctx.resume() before every sound, since iOS suspends it automatically.
+ */
+const AudioCtxClass = window.AudioContext || window.webkitAudioContext;
 let audioCtx = null;
+let audioUnlocked = false;
 
+/**
+ * Create or return the shared AudioContext.
+ * Must be called inside a user gesture on iOS.
+ */
 function getAudioCtx() {
-  if (!audioCtx) audioCtx = new AudioCtx();
+  if (!audioCtx) {
+    audioCtx = new AudioCtxClass();
+  }
   return audioCtx;
 }
 
+/**
+ * iOS suspends AudioContext automatically.
+ * Resume it, then run the callback once it's running.
+ * @param {Function} fn - Function to run after resume.
+ */
+function withAudio(fn) {
+  try {
+    const ctx = getAudioCtx();
+    if (ctx.state === 'suspended') {
+      ctx.resume().then(fn).catch(() => {});
+    } else {
+      fn();
+    }
+  } catch (e) {}
+}
+
+/**
+ * Unlock audio on the very first touch — iOS requires this.
+ * We play a silent buffer to "open" the audio pipeline.
+ */
+function unlockAudio() {
+  if (audioUnlocked) return;
+  audioUnlocked = true;
+  try {
+    const ctx    = getAudioCtx();
+    const buf    = ctx.createBuffer(1, 1, 22050);
+    const source = ctx.createBufferSource();
+    source.buffer = buf;
+    source.connect(ctx.destination);
+    source.start(0);
+    // Resume in case it was suspended
+    if (ctx.state === 'suspended') ctx.resume();
+  } catch (e) {}
+}
+
 function playTick() {
-  try {
-    const ctx  = getAudioCtx();
-    const osc  = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.type = 'sine';
-    osc.frequency.value = 600;
-    gain.gain.setValueAtTime(0.18, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12);
-    osc.start(ctx.currentTime);
-    osc.stop(ctx.currentTime + 0.12);
-  } catch (e) {}
-}
-
-function playUncheck() {
-  try {
-    const ctx  = getAudioCtx();
-    const osc  = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.type = 'sine';
-    osc.frequency.value = 350;
-    gain.gain.setValueAtTime(0.1, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1);
-    osc.start(ctx.currentTime);
-    osc.stop(ctx.currentTime + 0.1);
-  } catch (e) {}
-}
-
-function playFanfare() {
-  try {
-    const ctx   = getAudioCtx();
-    const notes = [523, 659, 784, 1047];
-    notes.forEach((freq, i) => {
+  withAudio(() => {
+    try {
+      const ctx  = getAudioCtx();
       const osc  = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.connect(gain);
       gain.connect(ctx.destination);
       osc.type = 'sine';
-      osc.frequency.value = freq;
-      const start = ctx.currentTime + i * 0.12;
-      gain.gain.setValueAtTime(0, start);
-      gain.gain.linearRampToValueAtTime(0.22, start + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.001, start + 0.3);
-      osc.start(start);
-      osc.stop(start + 0.3);
-    });
-  } catch (e) {}
+      osc.frequency.value = 600;
+      gain.gain.setValueAtTime(0.18, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.12);
+    } catch (e) {}
+  });
+}
+
+function playUncheck() {
+  withAudio(() => {
+    try {
+      const ctx  = getAudioCtx();
+      const osc  = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.value = 350;
+      gain.gain.setValueAtTime(0.1, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.1);
+    } catch (e) {}
+  });
+}
+
+function playFanfare() {
+  withAudio(() => {
+    try {
+      const ctx   = getAudioCtx();
+      const notes = [523, 659, 784, 1047];
+      notes.forEach((freq, i) => {
+        const osc  = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+        const start = ctx.currentTime + i * 0.12;
+        gain.gain.setValueAtTime(0, start);
+        gain.gain.linearRampToValueAtTime(0.22, start + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.001, start + 0.3);
+        osc.start(start);
+        osc.stop(start + 0.3);
+      });
+    } catch (e) {}
+  });
 }
 
 // ── CONFETTI ──────────────────────────────────────────────────
@@ -146,6 +201,9 @@ function hideCompleteBanner() {
 
 // ── CORE LOGIC ────────────────────────────────────────────────
 function tog(el) {
+  // Unlock audio on first interaction — critical for iOS
+  unlockAudio();
+
   el.classList.toggle('checked');
   const isChecked = el.classList.contains('checked');
   el.setAttribute('aria-checked', isChecked);
@@ -211,16 +269,25 @@ function rollQuote() {
 // ── INIT ──────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
 
+  // ARIA init
   document.querySelectorAll('.step').forEach((step) => {
     step.setAttribute('role', 'checkbox');
     step.setAttribute('aria-checked', 'false');
   });
 
+  // Reset button
   resetBtn.addEventListener('click', resetAll);
 
+  // Notes auto-resize
   if (notesTxt) {
     notesTxt.addEventListener('input', () => autoResize(notesTxt));
   }
 
+  // iOS audio unlock — attach to the earliest possible touch on the page
+  // This primes the AudioContext before the user taps a step
+  document.addEventListener('touchstart', unlockAudio, { once: true, passive: true });
+  document.addEventListener('touchend',   unlockAudio, { once: true, passive: true });
+
+  // Initial quote
   rollQuote();
 });
