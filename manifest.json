@@ -1,7 +1,6 @@
 {
   "name": "nXuu CheckList",
   "short_name": "nXuu",
-  "description": "A structured pre-trade checklist for disciplined execution.",
   "start_url": "/nxuuchecklist/",
   "scope": "/nxuuchecklist/",
   "display": "standalone",
