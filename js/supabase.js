@@ -44,7 +44,9 @@ async function signUp(email, password) {
     body:    JSON.stringify({ email, password }),
   });
   const data = await res.json();
-  if (data.error) throw new Error(data.error.message || data.msg || 'Sign up failed');
+  if (!res.ok || data.error || data.error_code || data.msg) {
+    throw new Error(data.error_description || data.msg || (data.error?.message) || data.error || 'Sign up failed');
+  }
   return data;
 }
 
@@ -61,7 +63,12 @@ async function signIn(email, password) {
     }
   );
   const data = await res.json();
-  if (data.error) throw new Error(data.error_description || data.error || 'Sign in failed');
+  // Supabase can return errors in multiple shapes — check all of them
+  if (!res.ok || data.error || data.error_code || data.msg || !data.access_token) {
+    throw new Error(data.error_description || data.msg || data.error || 'Invalid email or password.');
+  }
+  // Clear any previous session before saving the new one
+  localStorage.removeItem('nxuu_session');
   _session = data;
   localStorage.setItem('nxuu_session', JSON.stringify(data));
   return data;
@@ -90,10 +97,15 @@ function restoreSession() {
     const raw = localStorage.getItem('nxuu_session');
     if (!raw) return false;
     const s = JSON.parse(raw);
-    if (!s?.access_token) return false;
+    // Must have a real access token AND a real user id — not just any truthy value
+    if (!s?.access_token || !s?.user?.id || !s?.user?.email) {
+      localStorage.removeItem('nxuu_session');
+      return false;
+    }
     _session = s;
     return true;
   } catch(e) {
+    localStorage.removeItem('nxuu_session');
     return false;
   }
 }
