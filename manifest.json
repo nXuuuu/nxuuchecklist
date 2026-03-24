@@ -1,8 +1,9 @@
 {
-  "name": "nXuu CheckList",
+  "name": "nXuu Trading Journal",
   "short_name": "nXuu",
-  "start_url": "/nxuuchecklist/",
-  "scope": "/nxuuchecklist/",
+  "description": "Checklist, trade log, calendar, equity curve and stats.",
+  "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#f2ede4",
   "theme_color": "#1e1c18",
