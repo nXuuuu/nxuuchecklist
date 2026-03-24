@@ -685,6 +685,29 @@ document.addEventListener('DOMContentLoaded', async () => {
     return;
   }
 
+  // Handle Supabase email confirmation redirect (tokens arrive in the URL hash)
+  const hash = window.location.hash;
+  if (hash && hash.includes('access_token')) {
+    const params      = new URLSearchParams(hash.replace('#', ''));
+    const accessToken = params.get('access_token');
+    const refreshToken= params.get('refresh_token');
+    const type        = params.get('type');
+    if (accessToken) {
+      try {
+        await setSessionFromTokens(accessToken, refreshToken);
+        history.replaceState(null, '', window.location.pathname);
+        if (type === 'signup') {
+          showAuthTab('signin');
+          setAuthMsg(document.getElementById('signin-msg'), 'Email confirmed! Signing you in…', 'success');
+        }
+        await bootApp();
+        return;
+      } catch(e) {
+        console.error('Token restore failed:', e);
+      }
+    }
+  }
+
   if (restoreSession()) {
     await bootApp();
   } else {
