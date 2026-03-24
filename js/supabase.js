@@ -110,7 +110,28 @@ function restoreSession() {
   }
 }
 
-// ── TRADES ────────────────────────────────────────────────────
+/**
+ * Build a session from raw tokens (used after email confirmation redirect).
+ * Fetches the user object from Supabase so we have a full valid session.
+ */
+async function setSessionFromTokens(accessToken, refreshToken) {
+  // Fetch the user record using the access token
+  const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+    headers: {
+      'Content-Type':  'application/json',
+      'apikey':        SUPABASE_ANON_KEY,
+      'Authorization': `Bearer ${accessToken}`,
+    }
+  });
+  if (!res.ok) throw new Error('Could not verify token');
+  const user = await res.json();
+  if (!user?.id) throw new Error('Invalid user from token');
+  const session = { access_token: accessToken, refresh_token: refreshToken, user };
+  _session = session;
+  localStorage.setItem('nxuu_session', JSON.stringify(session));
+}
+
+
 async function insertTrade(trade) {
   const res = await fetch(`${SUPABASE_URL}/rest/v1/trades`, {
     method:  'POST',
