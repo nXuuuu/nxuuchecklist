@@ -227,6 +227,10 @@
                   <label class="form-label">Notes</label>
                   <textarea class="form-input form-textarea" id="f-notes" placeholder="What happened? Why did you take this trade?" rows="3"></textarea>
                 </div>
+                <div class="form-group form-group--full">
+                  <label class="form-label">Account <span class="form-hint">(e.g. FTMO, Personal, Challenge)</span></label>
+                  <input class="form-input" type="text" id="f-account" placeholder="Leave blank if only one account" />
+                </div>
               </div>
               <button class="submit-btn" id="submitBtn" type="button"><span id="submit-text">Save Trade</span></button>
               <div class="form-msg" id="form-msg"></div>
@@ -254,6 +258,7 @@
                 <select class="filter-select" id="fil-model" onchange="applyFilters()">
                   <option value="">All Models</option>
                 </select>
+                <input class="filter-input-date" type="text" id="fil-account" oninput="applyFilters()" placeholder="Account..." style="max-width:100px;" />
                 <input class="filter-input-date" type="date" id="fil-from" onchange="applyFilters()" title="From date" />
                 <input class="filter-input-date" type="date" id="fil-to"   onchange="applyFilters()" title="To date" />
                 <button class="filter-clear-btn" onclick="clearFilters()" type="button">✕ Clear</button>
@@ -322,6 +327,10 @@
               <div class="card-hd"><h3 class="card-title">By Session</h3></div>
               <div id="session-stats"><div class="loading-state">Loading...</div></div>
             </div>
+            <div class="card" style="margin-top:12px;">
+              <div class="card-hd"><h3 class="card-title">By Account</h3></div>
+              <div id="account-stats"><div class="loading-state">Loading...</div></div>
+            </div>
           </div>
         </div>
 
@@ -358,6 +367,14 @@
                   <div class="settings-row-sub" id="settings-email">—</div>
                 </div>
                 <button class="danger-btn" onclick="handleSignOut()">Sign Out</button>
+              </div>
+              <div class="settings-add-form" style="border-top:1px solid var(--border);">
+                <label class="form-label">Display name <span class="form-hint">(shown on leaderboard)</span></label>
+                <div style="display:flex;gap:8px;align-items:center;">
+                  <input class="form-input" type="text" id="display-name-input" placeholder="e.g. nXuu_Trader1" style="flex:1;" />
+                  <button class="add-btn" id="display-name-btn" onclick="saveDisplayName()" type="button">Save</button>
+                </div>
+                <div class="auth-msg" id="display-name-msg"></div>
               </div>
             </div>
 
