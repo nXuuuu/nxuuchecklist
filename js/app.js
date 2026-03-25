@@ -14,6 +14,7 @@ let calMonth       = new Date().getMonth() + 1;
 let equityChart    = null;
 let selectedResult = null;
 let activeFilters  = { result:'', session:'', model:'', account:'', from:'', to:'' };
+let activeAccount  = ''; // '' = all accounts
 
 // ── DARK MODE ─────────────────────────────────────────────────
 function initDarkMode() {
@@ -123,6 +124,7 @@ async function handleSignUp() {
 
 async function handleSignOut() {
   await signOut();
+  activeAccount = '';
   document.getElementById('main-app').style.display   = 'none';
   document.getElementById('auth-screen').style.display = 'flex';
   allTrades=[]; userSteps=[]; userModels=[];
@@ -237,8 +239,50 @@ function resetForm() {
 function showFormMsg(text,type) { const el=document.getElementById('form-msg'); el.textContent=text; el.className=`form-msg ${type}`; setTimeout(()=>{el.textContent='';el.className='form-msg';},4000); }
 
 async function loadTrades() {
-  try { allTrades=await fetchAllTrades(); applyFilters(); }
-  catch(e) { document.getElementById('trade-list').innerHTML=`<div class="empty-state">Could not load trades.</div>`; console.error(e); }
+  try {
+    allTrades = await fetchAllTrades();
+    rebuildAccountSwitcher();
+    applyFilters();
+  } catch(e) {
+    document.getElementById('trade-list').innerHTML=`<div class="empty-state">Could not load trades.</div>`;
+    console.error(e);
+  }
+}
+
+// Returns trades filtered by the active global account switcher
+function getAccountTrades() {
+  if (!activeAccount) return allTrades;
+  return allTrades.filter(t => (t.account || '') === activeAccount);
+}
+
+function rebuildAccountSwitcher() {
+  const sel = document.getElementById('account-switcher');
+  if (!sel) return;
+  // Collect unique non-empty account names
+  const accounts = [...new Set(allTrades.map(t => t.account).filter(Boolean))].sort();
+  const prev = sel.value;
+  sel.innerHTML = `<option value="">All Accounts</option>` +
+    accounts.map(a => `<option value="${a}"${a===prev?' selected':''}>${a}</option>`).join('');
+  // If previously selected account no longer exists, reset
+  if (prev && !accounts.includes(prev)) {
+    activeAccount = '';
+    sel.value = '';
+  }
+  // Show/hide switcher — only show if there are multiple accounts
+  const wrap = document.getElementById('account-switcher-wrap');
+  if (wrap) wrap.style.display = accounts.length > 0 ? 'flex' : 'none';
+}
+
+function switchAccount() {
+  const sel = document.getElementById('account-switcher');
+  activeAccount = sel ? sel.value : '';
+  // Re-render all data views with the new account
+  applyFilters();
+  // Re-render whichever tab is currently active
+  const activeTab = document.querySelector('.tab-btn.active')?.dataset.tab;
+  if (activeTab === 'equity')   renderEquity();
+  if (activeTab === 'stats')    renderStats();
+  if (activeTab === 'calendar') renderCalendar();
 }
 
 // ── FILTERS ───────────────────────────────────────────────────
@@ -250,7 +294,8 @@ function applyFilters() {
   activeFilters.from    = document.getElementById('fil-from').value;
   activeFilters.to      = document.getElementById('fil-to').value;
 
-  let filtered = allTrades;
+  // Start from account-switcher-filtered trades, then apply per-column filters
+  let filtered = getAccountTrades();
   if (activeFilters.result)  filtered = filtered.filter(t=>t.result===activeFilters.result);
   if (activeFilters.session) filtered = filtered.filter(t=>t.session===activeFilters.session);
   if (activeFilters.model)   filtered = filtered.filter(t=>t.model===activeFilters.model);
@@ -260,7 +305,7 @@ function applyFilters() {
 
   const hasFilters = Object.values(activeFilters).some(v=>v!=='');
   const countEl = document.getElementById('filter-count');
-  if (hasFilters && countEl) countEl.textContent = `${filtered.length} of ${allTrades.length}`;
+  if (hasFilters && countEl) countEl.textContent = `${filtered.length} of ${getAccountTrades().length}`;
   else if (countEl) countEl.textContent = '';
 
   renderTradeList(filtered);
@@ -270,14 +315,14 @@ function clearFilters() {
   ['fil-result','fil-session','fil-model','fil-account','fil-from','fil-to'].forEach(id=>{ const el=document.getElementById(id); if(el)el.value=''; });
   activeFilters = { result:'', session:'', model:'', account:'', from:'', to:'' };
   document.getElementById('filter-count').textContent = '';
-  renderTradeList(allTrades);
+  renderTradeList(getAccountTrades());
 }
 
 // ── TRADE LIST ────────────────────────────────────────────────
 function renderTradeList(trades) {
   const listEl = document.getElementById('trade-list');
   if (!trades || trades.length===0) {
-    listEl.innerHTML = allTrades.length===0
+    listEl.innerHTML = getAccountTrades().length===0
       ? `<div class="empty-state">No trades yet. Log your first trade above.</div>`
       : `<div class="empty-state">No trades match your filters.</div>`;
     return;
@@ -363,6 +408,8 @@ async function renderCalendar() {
   const grid=document.getElementById('cal-grid'); grid.innerHTML='<div class="cal-loading">Loading...</div>';
   let trades=[];
   try { trades=await fetchTradesByMonth(calYear,calMonth); } catch(e){ console.error(e); }
+  // Filter by active account if one is selected
+  if (activeAccount) trades = trades.filter(t=>(t.account||'')===activeAccount);
   const tradeMap={};
   trades.forEach(t=>{ if(!tradeMap[t.date])tradeMap[t.date]=[]; tradeMap[t.date].push(t); });
   const totalPnl=trades.reduce((s,t)=>s+(t.pnl_usd||0),0);
@@ -391,9 +438,10 @@ async function renderCalendar() {
 // ── EQUITY CURVE ──────────────────────────────────────────────
 function renderEquity() {
   const emptyEl=document.getElementById('equity-empty'), canvas=document.getElementById('equity-chart');
-  if(allTrades.length===0){ emptyEl.style.display='flex'; canvas.style.display='none'; ['eq-total','eq-best','eq-worst','eq-dd'].forEach(id=>{document.getElementById(id).textContent=' — ';}); return; }
+  const trades = getAccountTrades();
+  if(trades.length===0){ emptyEl.style.display='flex'; canvas.style.display='none'; ['eq-total','eq-best','eq-worst','eq-dd'].forEach(id=>{document.getElementById(id).textContent=' — ';}); return; }
   emptyEl.style.display='none'; canvas.style.display='block';
-  const sorted=[...allTrades].sort((a,b)=>new Date(a.date)-new Date(b.date));
+  const sorted=[...trades].sort((a,b)=>new Date(a.date)-new Date(b.date));
   const labels=[],data=[]; let cum=0;
   sorted.forEach(t=>{ cum+=t.pnl_usd||0; labels.push(new Date(t.date+'T00:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short'})); data.push(parseFloat(cum.toFixed(2))); });
   const pnlVals=sorted.map(t=>t.pnl_usd||0), total=cum, best=Math.max(...pnlVals), worst=Math.min(...pnlVals);
@@ -410,9 +458,10 @@ function renderEquity() {
 
 // ── STATS ─────────────────────────────────────────────────────
 function renderStats() {
-  if(allTrades.length===0){ ['st-total','st-wr','st-avgr','st-totalpnl','st-wins','st-losses'].forEach(id=>{document.getElementById(id).textContent=' — ';}); document.getElementById('model-stats').innerHTML=`<div class="empty-state">No trades yet.</div>`; document.getElementById('session-stats').innerHTML=`<div class="empty-state">No trades yet.</div>`; return; }
-  const wins=allTrades.filter(t=>t.result==='win').length, losses=allTrades.filter(t=>t.result==='loss').length, total=allTrades.length;
-  const totalPnl=allTrades.reduce((s,t)=>s+(t.pnl_usd||0),0), totalR=allTrades.reduce((s,t)=>s+(t.r_value||0),0);
+  const trades = getAccountTrades();
+  if(trades.length===0){ ['st-total','st-wr','st-avgr','st-totalpnl','st-wins','st-losses'].forEach(id=>{document.getElementById(id).textContent=' — ';}); ['model-stats','session-stats','account-stats'].forEach(id=>{document.getElementById(id).innerHTML='<div class="empty-state">No trades yet.</div>';}); return; }
+  const wins=trades.filter(t=>t.result==='win').length, losses=trades.filter(t=>t.result==='loss').length, total=trades.length;
+  const totalPnl=trades.reduce((s,t)=>s+(t.pnl_usd||0),0), totalR=trades.reduce((s,t)=>s+(t.r_value||0),0);
   const wr=Math.round(wins/total*100), avgR=totalR/total;
   document.getElementById('st-total').textContent=total; document.getElementById('st-wr').textContent=`${wr}%`;
   document.getElementById('st-avgr').textContent=`${avgR>=0?'+':''}${avgR.toFixed(2)}R`; document.getElementById('st-avgr').className=`stat-val ${avgR>=0?'win-col':'loss-col'}`;
@@ -420,10 +469,11 @@ function renderStats() {
   document.getElementById('st-wins').textContent=wins; document.getElementById('st-losses').textContent=losses;
   const buildPerfRows=(groupKey,elId)=>{
     const groups={};
-    allTrades.forEach(t=>{ const k=t[groupKey]?(t[groupKey].charAt(0).toUpperCase()+t[groupKey].slice(1)):'Other'; if(!groups[k])groups[k]={wins:0,losses:0,be:0,pnl:0}; groups[k][t.result==='win'?'wins':t.result==='loss'?'losses':'be']++; groups[k].pnl+=t.pnl_usd||0; });
+    trades.forEach(t=>{ const k=t[groupKey]?(t[groupKey].charAt(0).toUpperCase()+t[groupKey].slice(1)):'Other'; if(!groups[k])groups[k]={wins:0,losses:0,be:0,pnl:0}; groups[k][t.result==='win'?'wins':t.result==='loss'?'losses':'be']++; groups[k].pnl+=t.pnl_usd||0; });
     document.getElementById(elId).innerHTML=Object.entries(groups).map(([name,d])=>{ const t=d.wins+d.losses+d.be,w=t>0?Math.round(d.wins/t*100):0,pnlStr=d.pnl>=0?`+$${d.pnl.toFixed(2)}`:`-$${Math.abs(d.pnl).toFixed(2)}`; return `<div class="perf-row"><div class="perf-name">${name}</div><div class="perf-meta"><span class="perf-wr">${w}% WR</span><span class="perf-r ${d.pnl>=0?'win-col':'loss-col'}">${pnlStr}</span><span class="perf-count">${t} trades</span></div></div>`; }).join('');
   };
   buildPerfRows('model','model-stats'); buildPerfRows('session','session-stats'); buildPerfRows('account','account-stats');
+}
 }
 
 // ── LEADERBOARD ───────────────────────────────────────────────
