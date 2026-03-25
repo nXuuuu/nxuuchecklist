@@ -269,6 +269,19 @@ html, body {
 }
 .dark-toggle:hover { border-color: var(--olive); color: var(--olive); background: var(--olive-bg); }
 
+.account-switcher-wrap { display:flex; align-items:center; }
+.account-switcher {
+  font-family:var(--font-mono); font-size:9px; letter-spacing:0.1em;
+  text-transform:uppercase; color:var(--text3);
+  background-color:var(--bg2); border:1px solid var(--border);
+  border-radius:var(--radius-full); padding:4px 22px 4px 10px;
+  outline:none; cursor:pointer; -webkit-appearance:none;
+  transition:border-color 0.15s; max-width:120px;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5' viewBox='0 0 8 5'%3E%3Cpath d='M1 1l3 3 3-3' stroke='%23908a7e' stroke-width='1.2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat; background-position:right 8px center;
+}
+.account-switcher:focus { border-color:var(--olive); }
+
 .signout-btn {
   font-family: var(--font-mono); font-size: 9px;
   letter-spacing: 0.12em; text-transform: uppercase;
