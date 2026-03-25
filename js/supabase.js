@@ -29,10 +29,33 @@ function authHeaders(token) {
 // ── AUTH STATE ────────────────────────────────────────────────
 let _session = null;
 
-function getSession()  { return _session; }
-function getToken()    { return _session?.access_token || SUPABASE_ANON_KEY; }
-function getUserId()   { return _session?.user?.id || null; }
-function getUserEmail(){ return _session?.user?.email || ''; }
+function getSession()      { return _session; }
+function getToken()        { return _session?.access_token || SUPABASE_ANON_KEY; }
+function getUserId()       { return _session?.user?.id || null; }
+function getUserEmail()    { return _session?.user?.email || ''; }
+function getUserDisplayName() { return _session?.user?.user_metadata?.display_name || ''; }
+
+/**
+ * Save a display name to Supabase user metadata.
+ */
+async function updateUserDisplayName(name) {
+  const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+    method:  'PUT',
+    headers: authHeaders(getToken()),
+    body:    JSON.stringify({ data: { display_name: name } }),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(()=>({}));
+    throw new Error(data.msg || data.error_description || 'Could not update display name.');
+  }
+  const updated = await res.json();
+  // Patch local session so it reflects immediately without re-login
+  if (_session && updated?.user_metadata) {
+    _session.user.user_metadata = updated.user_metadata;
+    localStorage.setItem('nxuu_session', JSON.stringify(_session));
+  }
+  return updated;
+}
 
 /**
  * Sign up with email + password.
