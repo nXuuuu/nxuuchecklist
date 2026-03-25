@@ -767,6 +767,8 @@ html, body {
 
 .trade-date { font-family: var(--font-mono); font-size: 9px; color: var(--text3); }
 .trade-tag  { font-family: var(--font-mono); font-size: 9px; color: var(--text4); background: var(--bg2); padding: 1px 6px; border-radius: 3px; }
+.trade-tag.account-tag { color: var(--blue); background: var(--blue-bg); }
+.detail-badge.account  { background: var(--blue-bg); color: var(--blue); }
 .trade-notes{ font-size: 11px; font-weight: 300; color: var(--text3); line-height: 1.4; margin-top: 2px; }
 
 .trade-r   { font-family: var(--font-mono); font-size: 12px; font-weight: 500; }
