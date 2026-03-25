@@ -114,6 +114,11 @@
         </div>
         <div class="app-header-right">
           <span class="user-email" id="user-email"></span>
+          <div class="account-switcher-wrap" id="account-switcher-wrap" style="display:none;">
+            <select class="account-switcher" id="account-switcher" onchange="switchAccount()">
+              <option value="">All Accounts</option>
+            </select>
+          </div>
           <button class="dark-toggle" id="dark-toggle-btn" onclick="toggleDark()" title="Toggle dark mode" type="button">☾</button>
           <button class="signout-btn" onclick="handleSignOut()" type="button">Sign Out</button>
         </div>
