@@ -474,7 +474,6 @@ function renderStats() {
   };
   buildPerfRows('model','model-stats'); buildPerfRows('session','session-stats'); buildPerfRows('account','account-stats');
 }
-}
 
 // ── LEADERBOARD ───────────────────────────────────────────────
 async function renderLeaderboard() {
