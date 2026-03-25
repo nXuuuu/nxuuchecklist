@@ -236,3 +236,42 @@ async function deleteModel(id) {
   });
   if (!res.ok) throw new Error(await res.text());
 }
+
+// ── PASSWORD RESET ────────────────────────────────────────────
+/**
+ * Send a password reset email via Supabase.
+ */
+async function requestPasswordReset(email) {
+  const res = await fetch(`${SUPABASE_URL}/auth/v1/recover`, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY },
+    body:    JSON.stringify({ email }),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(()=>({}));
+    throw new Error(data.msg || data.error_description || 'Could not send reset email.');
+  }
+}
+
+// ── LEADERBOARD ───────────────────────────────────────────────
+/**
+ * Fetch aggregated stats for all users who opted in.
+ * Uses a Supabase RPC function (see schema_v6.sql for setup).
+ * Falls back to empty array if the function doesn't exist yet.
+ */
+async function fetchLeaderboard() {
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/rpc/get_leaderboard`,
+    {
+      method:  'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey':        SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${getToken()}`,
+      },
+      body: JSON.stringify({}),
+    }
+  );
+  if (!res.ok) return []; // gracefully return empty if function not set up
+  return res.json();
+}
