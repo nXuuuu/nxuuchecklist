@@ -13,7 +13,7 @@ let calYear        = new Date().getFullYear();
 let calMonth       = new Date().getMonth() + 1;
 let equityChart    = null;
 let selectedResult = null;
-let activeFilters  = { result:'', session:'', model:'', from:'', to:'' };
+let activeFilters  = { result:'', session:'', model:'', account:'', from:'', to:'' };
 
 // ── DARK MODE ─────────────────────────────────────────────────
 function initDarkMode() {
@@ -135,10 +135,10 @@ async function bootApp() {
   document.getElementById('auth-screen').style.display = 'none';
   document.getElementById('main-app').style.display    = 'flex';
   const email = getUserEmail();
-  document.getElementById('user-email').textContent     = email;
+  const displayName = getUserDisplayName();
+  document.getElementById('user-email').textContent     = displayName || email;
   document.getElementById('settings-email').textContent = email;
   initDarkMode();
-  // Restore leaderboard opt-in
   const optIn = localStorage.getItem('nxuu_lb_optin') === 'true';
   const toggle = document.getElementById('lb-opt-in');
   if (toggle) toggle.checked = optIn;
@@ -215,13 +215,14 @@ async function submitTrade() {
   const date=document.getElementById('f-date').value, session=document.getElementById('f-session').value;
   const model=document.getElementById('f-model').value, rRaw=document.getElementById('f-r').value;
   const pnlRaw=document.getElementById('f-pnl').value, notes=document.getElementById('f-notes').value.trim();
+  const account=document.getElementById('f-account').value.trim();
   const btn=document.getElementById('submitBtn'), btnText=document.getElementById('submit-text');
   if (!date)           return showFormMsg('Please select a date.','error');
   if (!selectedResult) return showFormMsg('Please select Win, Loss, or BE.','error');
   if (rRaw===''&&pnlRaw==='') return showFormMsg('Please enter at least an R value or PnL.','error');
   btn.disabled=true; btnText.textContent='Saving...';
   try {
-    await insertTrade({ date, result:selectedResult, r_value:rRaw!==''?parseFloat(rRaw):0, pnl_usd:pnlRaw!==''?parseFloat(pnlRaw):0, notes:notes||null, model:model||null, session:session||null });
+    await insertTrade({ date, result:selectedResult, r_value:rRaw!==''?parseFloat(rRaw):0, pnl_usd:pnlRaw!==''?parseFloat(pnlRaw):0, notes:notes||null, model:model||null, session:session||null, account:account||null });
     showFormMsg('Trade saved!','success'); resetForm(); await loadTrades();
   } catch(e) { showFormMsg('Failed to save. Check your connection.','error'); console.error(e); }
   finally { btn.disabled=false; btnText.textContent='Save Trade'; }
@@ -229,7 +230,7 @@ async function submitTrade() {
 
 function resetForm() {
   document.getElementById('f-date').value=new Date().toISOString().split('T')[0];
-  ['f-session','f-model','f-r','f-pnl','f-notes'].forEach(id=>{ const el=document.getElementById(id); if(el)el.value=''; });
+  ['f-session','f-model','f-r','f-pnl','f-notes','f-account'].forEach(id=>{ const el=document.getElementById(id); if(el)el.value=''; });
   document.querySelectorAll('.result-btn').forEach(b=>b.classList.remove('selected')); selectedResult=null;
 }
 
@@ -245,6 +246,7 @@ function applyFilters() {
   activeFilters.result  = document.getElementById('fil-result').value;
   activeFilters.session = document.getElementById('fil-session').value;
   activeFilters.model   = document.getElementById('fil-model').value;
+  activeFilters.account = document.getElementById('fil-account').value;
   activeFilters.from    = document.getElementById('fil-from').value;
   activeFilters.to      = document.getElementById('fil-to').value;
 
@@ -252,6 +254,7 @@ function applyFilters() {
   if (activeFilters.result)  filtered = filtered.filter(t=>t.result===activeFilters.result);
   if (activeFilters.session) filtered = filtered.filter(t=>t.session===activeFilters.session);
   if (activeFilters.model)   filtered = filtered.filter(t=>t.model===activeFilters.model);
+  if (activeFilters.account) filtered = filtered.filter(t=>(t.account||'').toLowerCase()===activeFilters.account.toLowerCase());
   if (activeFilters.from)    filtered = filtered.filter(t=>t.date>=activeFilters.from);
   if (activeFilters.to)      filtered = filtered.filter(t=>t.date<=activeFilters.to);
 
@@ -264,8 +267,8 @@ function applyFilters() {
 }
 
 function clearFilters() {
-  ['fil-result','fil-session','fil-model','fil-from','fil-to'].forEach(id=>{ const el=document.getElementById(id); if(el)el.value=''; });
-  activeFilters = { result:'', session:'', model:'', from:'', to:'' };
+  ['fil-result','fil-session','fil-model','fil-account','fil-from','fil-to'].forEach(id=>{ const el=document.getElementById(id); if(el)el.value=''; });
+  activeFilters = { result:'', session:'', model:'', account:'', from:'', to:'' };
   document.getElementById('filter-count').textContent = '';
   renderTradeList(allTrades);
 }
@@ -289,6 +292,7 @@ function renderTradeList(trades) {
           <div class="trade-row-top">
             <span class="trade-result ${t.result}">${t.result.toUpperCase()}</span>
             <span class="trade-date">${dateStr}</span>
+            ${t.account ?`<span class="trade-tag account-tag">${t.account}</span>`:''}
             ${t.model   ?`<span class="trade-tag">${t.model}</span>`  :''}
             ${t.session ?`<span class="trade-tag">${t.session}</span>`:''}
           </div>
@@ -323,6 +327,7 @@ function openTradeDetail(id) {
   document.getElementById('modal-body').innerHTML = `
     <div class="detail-badge-row">
       <span class="detail-badge ${t.result}">${t.result.toUpperCase()}</span>
+      ${t.account ? `<span class="detail-badge account">${t.account}</span>` : ''}
       ${t.model   ? `<span class="detail-badge tag">${t.model}</span>`   : ''}
       ${t.session ? `<span class="detail-badge tag">${t.session}</span>` : ''}
     </div>
@@ -418,7 +423,7 @@ function renderStats() {
     allTrades.forEach(t=>{ const k=t[groupKey]?(t[groupKey].charAt(0).toUpperCase()+t[groupKey].slice(1)):'Other'; if(!groups[k])groups[k]={wins:0,losses:0,be:0,pnl:0}; groups[k][t.result==='win'?'wins':t.result==='loss'?'losses':'be']++; groups[k].pnl+=t.pnl_usd||0; });
     document.getElementById(elId).innerHTML=Object.entries(groups).map(([name,d])=>{ const t=d.wins+d.losses+d.be,w=t>0?Math.round(d.wins/t*100):0,pnlStr=d.pnl>=0?`+$${d.pnl.toFixed(2)}`:`-$${Math.abs(d.pnl).toFixed(2)}`; return `<div class="perf-row"><div class="perf-name">${name}</div><div class="perf-meta"><span class="perf-wr">${w}% WR</span><span class="perf-r ${d.pnl>=0?'win-col':'loss-col'}">${pnlStr}</span><span class="perf-count">${t} trades</span></div></div>`; }).join('');
   };
-  buildPerfRows('model','model-stats'); buildPerfRows('session','session-stats');
+  buildPerfRows('model','model-stats'); buildPerfRows('session','session-stats'); buildPerfRows('account','account-stats');
 }
 
 // ── LEADERBOARD ───────────────────────────────────────────────
@@ -486,6 +491,26 @@ function saveLeaderboardOptIn() {
 }
 
 // ── SETTINGS ──────────────────────────────────────────────────
+async function saveDisplayName() {
+  const input = document.getElementById('display-name-input');
+  const btn   = document.getElementById('display-name-btn');
+  const msg   = document.getElementById('display-name-msg');
+  const name  = input.value.trim();
+  if (!name) return;
+  btn.disabled = true; btn.textContent = 'Saving...';
+  try {
+    await updateUserDisplayName(name);
+    // Update header display
+    document.getElementById('user-email').textContent = name;
+    msg.textContent = 'Saved!'; msg.className = 'auth-msg success';
+    setTimeout(()=>{ msg.textContent=''; msg.className='auth-msg'; }, 3000);
+  } catch(e) {
+    msg.textContent = e.message; msg.className = 'auth-msg error';
+  } finally {
+    btn.disabled = false; btn.textContent = 'Save';
+  }
+}
+
 function renderSettings() {
   const stepsEl = document.getElementById('steps-manage-list');
   stepsEl.innerHTML = userSteps.length===0 ? `<div class="empty-state">No steps yet.</div>` :
@@ -493,6 +518,9 @@ function renderSettings() {
   const modelsEl = document.getElementById('models-manage-list');
   modelsEl.innerHTML = userModels.length===0 ? `<div class="empty-state">No models yet.</div>` :
     userModels.map(m=>`<div class="manage-row"><div class="manage-row-info"><span class="manage-row-title">${m.name}</span></div><button class="delete-btn" onclick="removeModel('${m.id}')" type="button">✕</button></div>`).join('');
+  // Populate display name
+  const dnInput = document.getElementById('display-name-input');
+  if (dnInput) dnInput.value = getUserDisplayName();
   // Sync dark toggle
   const isDark = document.documentElement.getAttribute('data-theme')==='dark';
   const dt = document.getElementById('dark-mode-toggle'); if(dt) dt.checked=isDark;
@@ -514,8 +542,8 @@ async function removeModel(id) { if(!confirm('Delete this model?'))return; try{a
 // ── EXPORT ────────────────────────────────────────────────────
 function exportCSV() {
   if(allTrades.length===0)return alert('No trades to export.');
-  const headers=['Date','Result','R Value','PnL (USD)','Model','Session','Notes'];
-  const rows=allTrades.map(t=>[t.date,t.result,t.r_value||'',t.pnl_usd||'',t.model||'',t.session||'',(t.notes||'').replace(/,/g,' ')]);
+  const headers=['Date','Result','R Value','PnL (USD)','Account','Model','Session','Notes'];
+  const rows=allTrades.map(t=>[t.date,t.result,t.r_value||'',t.pnl_usd||'',t.account||'',t.model||'',t.session||'',(t.notes||'').replace(/,/g,' ')]);
   const csv=[headers,...rows].map(r=>r.join(',')).join('\n');
   const a=document.createElement('a'); a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv); a.download=`nxuu-trades-${new Date().toISOString().split('T')[0]}.csv`; a.click();
 }
