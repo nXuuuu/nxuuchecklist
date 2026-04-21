@@ -313,32 +313,108 @@
           </div>
         </div>
 
-        <!-- ════ STATS ════ -->
+        <!-- ════ STATS / DASHBOARD ════ -->
         <div class="tab-pane" id="tab-stats">
           <div class="pane-inner">
-            <div class="stats-grid">
-              <div class="stat-card"><div class="stat-val" id="st-total">—</div><div class="stat-lbl">Total Trades</div></div>
-              <div class="stat-card"><div class="stat-val win-col" id="st-wr">—</div><div class="stat-lbl">Win Rate</div></div>
-              <div class="stat-card"><div class="stat-val" id="st-avgr">—</div><div class="stat-lbl">Avg R / Trade</div></div>
-              <div class="stat-card"><div class="stat-val" id="st-totalpnl">—</div><div class="stat-lbl">Total PnL</div></div>
-              <div class="stat-card"><div class="stat-val win-col" id="st-wins">—</div><div class="stat-lbl">Wins</div></div>
-              <div class="stat-card"><div class="stat-val loss-col" id="st-losses">—</div><div class="stat-lbl">Losses</div></div>
+
+            <!-- Hero row: Net PnL · Win Rate · Profit Factor -->
+            <div class="dash-hero">
+              <div class="dash-hero-card dash-hero-pnl">
+                <div class="dash-hero-label">Net P&amp;L</div>
+                <div class="dash-hero-val" id="st-totalpnl">—</div>
+                <div class="dash-hero-sub" id="st-tradecnt">— trades</div>
+              </div>
+              <div class="dash-hero-card dash-hero-wr">
+                <div class="dash-hero-label">Win Rate</div>
+                <div class="dash-hero-val" id="st-wr">—</div>
+                <div class="dash-hero-sub" id="st-wl-sub">— W · — L</div>
+              </div>
+              <div class="dash-hero-card dash-hero-pf">
+                <div class="dash-hero-label">Profit Factor</div>
+                <div class="dash-hero-val" id="st-pf">—</div>
+                <div class="dash-hero-sub">gross W ÷ L</div>
+              </div>
             </div>
+
+            <!-- Secondary 8-metric grid -->
+            <div class="dash-metrics-grid">
+              <div class="dash-metric-card">
+                <div class="dash-metric-icon dash-icon-green">↑</div>
+                <div class="dash-metric-val win-col" id="st-avgwin">—</div>
+                <div class="dash-metric-lbl">Avg Win</div>
+              </div>
+              <div class="dash-metric-card">
+                <div class="dash-metric-icon dash-icon-red">↓</div>
+                <div class="dash-metric-val loss-col" id="st-avgloss">—</div>
+                <div class="dash-metric-lbl">Avg Loss</div>
+              </div>
+              <div class="dash-metric-card">
+                <div class="dash-metric-icon dash-icon-blue">⇄</div>
+                <div class="dash-metric-val" id="st-rr">—</div>
+                <div class="dash-metric-lbl">R:R Ratio</div>
+              </div>
+              <div class="dash-metric-card">
+                <div class="dash-metric-icon dash-icon-purple">μ</div>
+                <div class="dash-metric-val" id="st-exp">—</div>
+                <div class="dash-metric-lbl">Expectancy</div>
+              </div>
+              <div class="dash-metric-card">
+                <div class="dash-metric-icon dash-icon-green">🔥</div>
+                <div class="dash-metric-val win-col" id="st-beststreak">—</div>
+                <div class="dash-metric-lbl">Best Streak</div>
+              </div>
+              <div class="dash-metric-card">
+                <div class="dash-metric-icon dash-icon-red">❄</div>
+                <div class="dash-metric-val loss-col" id="st-worststreak">—</div>
+                <div class="dash-metric-lbl">Worst Streak</div>
+              </div>
+              <div class="dash-metric-card">
+                <div class="dash-metric-icon dash-icon-amber">R</div>
+                <div class="dash-metric-val" id="st-avgr">—</div>
+                <div class="dash-metric-lbl">Avg R</div>
+              </div>
+              <div class="dash-metric-card">
+                <div class="dash-metric-icon dash-icon-amber">#</div>
+                <div class="dash-metric-val" id="st-total">—</div>
+                <div class="dash-metric-lbl">Total Trades</div>
+              </div>
+            </div>
+
+            <!-- Cumulative Performance chart -->
             <div class="card" style="margin-top:14px;">
+              <div class="card-hd">
+                <h3 class="card-title">Cumulative Performance</h3>
+                <div class="dash-chart-toggle">
+                  <button class="dash-toggle-btn active" id="stats-toggle-usd" onclick="switchStatsChart('usd')" type="button">$</button>
+                  <button class="dash-toggle-btn" id="stats-toggle-r" onclick="switchStatsChart('r')" type="button">R</button>
+                </div>
+              </div>
+              <div class="stats-chart-wrap">
+                <canvas id="stats-cumulative-chart"></canvas>
+                <div class="chart-empty" id="stats-chart-empty" style="display:none;">No trades yet.</div>
+              </div>
+            </div>
+
+            <!-- By Model -->
+            <div class="card" style="margin-top:12px;">
               <div class="card-hd"><h3 class="card-title">By Model</h3></div>
               <div id="model-stats"><div class="loading-state">Loading...</div></div>
             </div>
+
+            <!-- By Session -->
             <div class="card" style="margin-top:12px;">
               <div class="card-hd"><h3 class="card-title">By Session</h3></div>
               <div id="session-stats"><div class="loading-state">Loading...</div></div>
             </div>
+
+            <!-- By Account -->
             <div class="card" style="margin-top:12px;">
               <div class="card-hd"><h3 class="card-title">By Account</h3></div>
               <div id="account-stats"><div class="loading-state">Loading...</div></div>
             </div>
+
           </div>
         </div>
-
         <!-- ════ LEADERBOARD ════ -->
         <div class="tab-pane" id="tab-leaderboard">
           <div class="pane-inner">
@@ -431,6 +507,19 @@
               <div class="settings-add-form">
                 <input class="form-input" type="text" id="new-model-name" placeholder="Model name (e.g. Jab Kvort)" />
                 <button class="add-btn" onclick="addModel()" type="button">+ Add Model</button>
+              </div>
+            </div>
+
+            <!-- Account Growth -->
+            <div class="settings-section-label" style="margin-top:20px;">Account Growth</div>
+            <div class="card">
+              <div class="settings-add-form">
+                <label class="form-label">Starting Balance <span class="form-hint">(used for account growth % on Stats)</span></label>
+                <div style="display:flex;gap:8px;align-items:center;">
+                  <input class="form-input" type="number" id="starting-balance-input" placeholder="e.g. 10000" step="0.01" style="flex:1;" />
+                  <button class="add-btn" id="starting-balance-btn" onclick="saveStartingBalance()" type="button">Save</button>
+                </div>
+                <div class="auth-msg" id="starting-balance-msg"></div>
               </div>
             </div>
 
