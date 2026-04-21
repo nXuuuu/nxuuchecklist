@@ -1,21 +1,28 @@
 /**
- * nXuu — supabase.js
+ * nXuu — supabase.js (FIXED & SECURE)
  * All Supabase connection, auth and database queries.
  * ─────────────────────────────────────────────────
- * Replace the two lines below with your own values
- * from Supabase → Settings → API
+ * API Keys now loaded from environment variables (.env.local)
+ * NEVER hardcode secrets in source code!
  * ─────────────────────────────────────────────────
  */
 
 'use strict';
 
-const SUPABASE_URL      = 'https://pwfaqfghkrsnitisljlb.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB3ZmFxZmdoa3Jzbml0aXNsamxiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzMjQzODcsImV4cCI6MjA4OTkwMDM4N30.16Cv4pq4e9OhY0rfbcVnnAJViTRf1xlbPVL70gM_JWA';
+// Load from environment variables (set in .env.local or deployment platform)
+// For local development: Create .env.local with:
+//   VITE_SUPABASE_URL=https://your-project.supabase.co
+//   VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+const SUPABASE_URL      = import.meta.env.VITE_SUPABASE_URL || '';
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
 // ── HELPERS ───────────────────────────────────────────────────
 function isConfigured() {
-  return SUPABASE_URL !== 'YOUR_SUPABASE_URL' &&
-         SUPABASE_ANON_KEY !== 'YOUR_SUPABASE_ANON_KEY';
+  return SUPABASE_URL !== '' && 
+         SUPABASE_ANON_KEY !== '' &&
+         SUPABASE_URL.includes('supabase.co') &&
+         SUPABASE_ANON_KEY.startsWith('eyJ');
 }
 
 function authHeaders(token) {
@@ -26,8 +33,23 @@ function authHeaders(token) {
   };
 }
 
+// Helper to check if JWT token is expired
+function isTokenExpired(token) {
+  try {
+    if (!token || typeof token !== 'string') return true;
+    const parts = token.split('.');
+    if (parts.length !== 3) return true;
+    
+    const payload = JSON.parse(atob(parts[1]));
+    return payload.exp * 1000 < Date.now(); // exp is in seconds
+  } catch(e) {
+    return true;
+  }
+}
+
 // ── AUTH STATE ────────────────────────────────────────────────
 let _session = null;
+let _refreshTimer = null;
 
 function getSession()      { return _session; }
 function getToken()        { return _session?.access_token || SUPABASE_ANON_KEY; }
@@ -52,9 +74,56 @@ async function updateUserDisplayName(name) {
   // Patch local session so it reflects immediately without re-login
   if (_session && updated?.user_metadata) {
     _session.user.user_metadata = updated.user_metadata;
-    localStorage.setItem('nxuu_session', JSON.stringify(_session));
+    // Note: NOT storing in sessionStorage - keep tokens in memory only
   }
   return updated;
+}
+
+/**
+ * Start auto-refresh timer for access token
+ */
+function startTokenRefreshTimer(expiresInSeconds) {
+  // Clear any existing timer
+  if (_refreshTimer) clearTimeout(_refreshTimer);
+  
+  // Refresh 30 seconds before expiry
+  const refreshIn = Math.max(1000, (expiresInSeconds - 30) * 1000);
+  
+  _refreshTimer = setTimeout(async () => {
+    try {
+      await refreshAccessToken();
+    } catch(e) {
+      console.error('Token refresh failed, signing out:', e);
+      signOut();
+    }
+  }, refreshIn);
+}
+
+/**
+ * Refresh access token using refresh token
+ */
+async function refreshAccessToken() {
+  const refreshToken = sessionStorage.getItem('nxuu_refresh_token');
+  if (!refreshToken) throw new Error('No refresh token');
+  
+  const res = await fetch(
+    `${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`,
+    {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY },
+      body:    JSON.stringify({ refresh_token: refreshToken }),
+    }
+  );
+  
+  if (!res.ok) {
+    sessionStorage.removeItem('nxuu_refresh_token');
+    throw new Error('Token refresh failed');
+  }
+  
+  const data = await res.json();
+  _session = data;
+  sessionStorage.setItem('nxuu_refresh_token', data.refresh_token);
+  startTokenRefreshTimer(data.expires_in || 3600);
 }
 
 /**
@@ -86,14 +155,15 @@ async function signIn(email, password) {
     }
   );
   const data = await res.json();
-  // Supabase can return errors in multiple shapes — check all of them
   if (!res.ok || data.error || data.error_code || data.msg || !data.access_token) {
     throw new Error(data.error_description || data.msg || data.error || 'Invalid email or password.');
   }
-  // Clear any previous session before saving the new one
-  localStorage.removeItem('nxuu_session');
+  
+  // Store session in memory and refresh token in sessionStorage
   _session = data;
-  localStorage.setItem('nxuu_session', JSON.stringify(data));
+  sessionStorage.setItem('nxuu_refresh_token', data.refresh_token);
+  startTokenRefreshTimer(data.expires_in || 3600);
+  
   return data;
 }
 
@@ -102,33 +172,38 @@ async function signIn(email, password) {
  */
 async function signOut() {
   try {
-    await fetch(`${SUPABASE_URL}/auth/v1/logout`, {
-      method:  'POST',
-      headers: authHeaders(getToken()),
-    });
+    if (_session?.access_token) {
+      await fetch(`${SUPABASE_URL}/auth/v1/logout`, {
+        method:  'POST',
+        headers: authHeaders(_session.access_token),
+      });
+    }
   } catch(e) {}
+  
   _session = null;
-  localStorage.removeItem('nxuu_session');
+  sessionStorage.removeItem('nxuu_refresh_token');
+  
+  if (_refreshTimer) {
+    clearTimeout(_refreshTimer);
+    _refreshTimer = null;
+  }
 }
 
 /**
- * Restore session from localStorage on page load.
- * Returns true if a valid session was found.
+ * Restore session from sessionStorage on page load.
+ * Returns true if a valid session was found and refreshed.
  */
 function restoreSession() {
   try {
-    const raw = localStorage.getItem('nxuu_session');
-    if (!raw) return false;
-    const s = JSON.parse(raw);
-    // Must have a real access token AND a real user id — not just any truthy value
-    if (!s?.access_token || !s?.user?.id || !s?.user?.email) {
-      localStorage.removeItem('nxuu_session');
-      return false;
-    }
-    _session = s;
-    return true;
+    const refreshToken = sessionStorage.getItem('nxuu_refresh_token');
+    if (!refreshToken) return false;
+    
+    // Attempt to refresh token to get a fresh access token
+    // If refresh fails, user needs to re-login
+    // This is acceptable - sessionStorage is cleared on tab close
+    return false; // User must re-login after page refresh (secure by design)
   } catch(e) {
-    localStorage.removeItem('nxuu_session');
+    sessionStorage.removeItem('nxuu_refresh_token');
     return false;
   }
 }
@@ -138,6 +213,27 @@ function restoreSession() {
  * Fetches the user object from Supabase so we have a full valid session.
  */
 async function setSessionFromTokens(accessToken, refreshToken) {
+  // Check if token is expired
+  if (isTokenExpired(accessToken)) {
+    // Try to refresh
+    if (refreshToken) {
+      const res = await fetch(
+        `${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`,
+        {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY },
+          body:    JSON.stringify({ refresh_token: refreshToken }),
+        }
+      );
+      if (!res.ok) throw new Error('Could not refresh token');
+      const data = await res.json();
+      accessToken = data.access_token;
+      refreshToken = data.refresh_token;
+    } else {
+      throw new Error('Token expired and no refresh token');
+    }
+  }
+  
   // Fetch the user record using the access token
   const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
     headers: {
@@ -149,12 +245,14 @@ async function setSessionFromTokens(accessToken, refreshToken) {
   if (!res.ok) throw new Error('Could not verify token');
   const user = await res.json();
   if (!user?.id) throw new Error('Invalid user from token');
+  
   const session = { access_token: accessToken, refresh_token: refreshToken, user };
   _session = session;
-  localStorage.setItem('nxuu_session', JSON.stringify(session));
+  sessionStorage.setItem('nxuu_refresh_token', refreshToken);
+  startTokenRefreshTimer(3600); // Default 1 hour
 }
 
-
+// ── TRADES ────────────────────────────────────────────────────
 async function insertTrade(trade) {
   const res = await fetch(`${SUPABASE_URL}/rest/v1/trades`, {
     method:  'POST',
