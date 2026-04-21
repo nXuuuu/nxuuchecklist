@@ -450,29 +450,188 @@ function renderEquity() {
   document.getElementById('eq-total').textContent=fmt(total); document.getElementById('eq-total').className=`equity-stat-val ${total>=0?'win-col':'loss-col'}`;
   document.getElementById('eq-best').textContent=fmt(best); document.getElementById('eq-worst').textContent=fmt(worst); document.getElementById('eq-dd').textContent=`-$${maxDD.toFixed(2)}`;
   if(equityChart)equityChart.destroy();
-  const col=total>=0?'#6b7a52':'#8a4a4a';
   const isDark=document.documentElement.getAttribute('data-theme')==='dark';
-  const tickColor=isDark?'#5e5a52':'#8a8478', gridColor=isDark?'rgba(255,255,255,0.04)':'rgba(0,0,0,0.04)';
-  equityChart=new Chart(canvas,{ type:'line', data:{ labels, datasets:[{ data, borderColor:col, borderWidth:2, pointRadius:3, pointBackgroundColor:col, fill:true, backgroundColor:total>=0?'rgba(107,122,82,0.08)':'rgba(138,74,74,0.08)', tension:0.3 }] }, options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{display:false}, tooltip:{callbacks:{label:ctx=>fmt(ctx.raw)}} }, scales:{ x:{ticks:{color:tickColor,font:{size:10,family:'DM Mono'},maxTicksLimit:8,maxRotation:0},grid:{color:gridColor}}, y:{ticks:{color:tickColor,font:{size:10,family:'DM Mono'},callback:v=>v>=0?`+$${v}`:`-$${Math.abs(v)}`},grid:{color:gridColor}} } } });
+  const col=total>=0?(isDark?'#4ade80':'#6b7a52'):(isDark?'#f87171':'#8a4a4a');
+  const fillCol=total>=0?(isDark?'rgba(74,222,128,0.08)':'rgba(107,122,82,0.08)'):(isDark?'rgba(248,113,113,0.08)':'rgba(138,74,74,0.08)');
+  const tickColor=isDark?'#444444':'#8a8478', gridColor=isDark?'rgba(255,255,255,0.03)':'rgba(0,0,0,0.04)';
+  equityChart=new Chart(canvas,{ type:'line', data:{ labels, datasets:[{ data, borderColor:col, borderWidth:2, pointRadius:3, pointBackgroundColor:col, fill:true, backgroundColor:fillCol, tension:0.3 }] }, options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{display:false}, tooltip:{callbacks:{label:ctx=>fmt(ctx.raw)}} }, scales:{ x:{ticks:{color:tickColor,font:{size:10,family:'DM Mono'},maxTicksLimit:8,maxRotation:0},grid:{color:gridColor}}, y:{ticks:{color:tickColor,font:{size:10,family:'DM Mono'},callback:v=>v>=0?`+$${v}`:`-$${Math.abs(v)}`},grid:{color:gridColor}} } } });
 }
 
-// ── STATS ─────────────────────────────────────────────────────
+// ── STATS / DASHBOARD ─────────────────────────────────────────
+let statsChartMode = 'usd';
+let statsChart = null;
+
+function calcStreaks(trades) {
+  const sorted = [...trades].sort((a,b)=>new Date(a.date)-new Date(b.date));
+  let bestStreak=0, worstStreak=0, curWin=0, curLoss=0;
+  sorted.forEach(t=>{
+    if(t.result==='win')  { curWin++; curLoss=0; bestStreak=Math.max(bestStreak,curWin); }
+    else if(t.result==='loss') { curLoss++; curWin=0; worstStreak=Math.max(worstStreak,curLoss); }
+    else { curWin=0; curLoss=0; }
+  });
+  return { bestStreak, worstStreak };
+}
+
 function renderStats() {
   const trades = getAccountTrades();
-  if(trades.length===0){ ['st-total','st-wr','st-avgr','st-totalpnl','st-wins','st-losses'].forEach(id=>{document.getElementById(id).textContent=' — ';}); ['model-stats','session-stats','account-stats'].forEach(id=>{document.getElementById(id).innerHTML='<div class="empty-state">No trades yet.</div>';}); return; }
-  const wins=trades.filter(t=>t.result==='win').length, losses=trades.filter(t=>t.result==='loss').length, total=trades.length;
-  const totalPnl=trades.reduce((s,t)=>s+(t.pnl_usd||0),0), totalR=trades.reduce((s,t)=>s+(t.r_value||0),0);
-  const wr=Math.round(wins/total*100), avgR=totalR/total;
-  document.getElementById('st-total').textContent=total; document.getElementById('st-wr').textContent=`${wr}%`;
-  document.getElementById('st-avgr').textContent=`${avgR>=0?'+':''}${avgR.toFixed(2)}R`; document.getElementById('st-avgr').className=`stat-val ${avgR>=0?'win-col':'loss-col'}`;
-  document.getElementById('st-totalpnl').textContent=totalPnl>=0?`+$${totalPnl.toFixed(2)}`:`-$${Math.abs(totalPnl).toFixed(2)}`; document.getElementById('st-totalpnl').className=`stat-val ${totalPnl>=0?'win-col':'loss-col'}`;
-  document.getElementById('st-wins').textContent=wins; document.getElementById('st-losses').textContent=losses;
+  const emptyIds = ['st-total','st-wr','st-avgr','st-totalpnl','st-pf','st-avgwin','st-avgloss','st-rr','st-exp','st-beststreak','st-worststreak'];
+  if(trades.length===0){
+    emptyIds.forEach(id=>{ const el=document.getElementById(id); if(el)el.textContent='—'; });
+    const sub1=document.getElementById('st-tradecnt'); if(sub1)sub1.textContent='— trades';
+    const sub2=document.getElementById('st-wl-sub');  if(sub2)sub2.textContent='— W · — L';
+    const sub3=document.getElementById('st-pf');      if(sub3)sub3.textContent='—';
+    ['model-stats','session-stats','account-stats'].forEach(id=>{document.getElementById(id).innerHTML='<div class="empty-state">No trades yet.</div>';});
+    renderStatsChart([]);
+    return;
+  }
+
+  const wins   = trades.filter(t=>t.result==='win');
+  const losses = trades.filter(t=>t.result==='loss');
+  const total  = trades.length;
+  const totalPnl = trades.reduce((s,t)=>s+(t.pnl_usd||0),0);
+  const totalR   = trades.reduce((s,t)=>s+(t.r_value||0),0);
+  const wr    = Math.round(wins.length/total*100);
+  const avgR  = totalR/total;
+
+  // Profit factor
+  const grossWin  = wins.reduce((s,t)=>s+(t.pnl_usd||0),0);
+  const grossLoss = Math.abs(losses.reduce((s,t)=>s+(t.pnl_usd||0),0));
+  const pf = grossLoss>0 ? (grossWin/grossLoss).toFixed(2) : grossWin>0 ? '∞' : '—';
+
+  // Avg win / avg loss
+  const avgWin  = wins.length>0   ? grossWin/wins.length   : 0;
+  const avgLoss = losses.length>0 ? grossLoss/losses.length : 0;
+
+  // R:R ratio
+  const avgWinR  = wins.length>0   ? wins.reduce((s,t)=>s+(t.r_value||0),0)/wins.length   : 0;
+  const avgLossR = losses.length>0 ? Math.abs(losses.reduce((s,t)=>s+(t.r_value||0),0)/losses.length) : 0;
+  const rrRatio  = avgLossR>0 ? (avgWinR/avgLossR).toFixed(2) : avgWinR>0 ? '∞' : '—';
+
+  // Expectancy: (WR * avgWin) - (LR * avgLoss)
+  const lr = losses.length/total;
+  const expectancy = (wr/100)*avgWin - lr*avgLoss;
+
+  // Streaks
+  const { bestStreak, worstStreak } = calcStreaks(trades);
+
+  // Render hero
+  const pnlEl = document.getElementById('st-totalpnl');
+  pnlEl.textContent = totalPnl>=0?`+$${totalPnl.toFixed(2)}`:`-$${Math.abs(totalPnl).toFixed(2)}`;
+  pnlEl.className = `dash-hero-val ${totalPnl>=0?'win-col':'loss-col'}`;
+  document.getElementById('st-tradecnt').textContent = `${total} trade${total!==1?'s':''}`;
+
+  const wrEl = document.getElementById('st-wr');
+  wrEl.textContent = `${wr}%`;
+  wrEl.className = `dash-hero-val ${wr>=50?'win-col':'loss-col'}`;
+  document.getElementById('st-wl-sub').textContent = `${wins.length}W · ${losses.length}L`;
+
+  const pfEl = document.getElementById('st-pf');
+  pfEl.textContent = pf;
+  pfEl.className = `dash-hero-val ${parseFloat(pf)>=1?'win-col':'loss-col'}`;
+
+  // Render secondary metrics
+  const setMetric = (id, val, cls='') => {
+    const el = document.getElementById(id); if(!el)return;
+    el.textContent = val;
+    if(cls) el.className = `dash-metric-val ${cls}`;
+  };
+  setMetric('st-avgwin',  avgWin>0?`+$${avgWin.toFixed(2)}`:'—',  'win-col');
+  setMetric('st-avgloss', avgLoss>0?`-$${avgLoss.toFixed(2)}`:'—', 'loss-col');
+  setMetric('st-rr',      rrRatio);
+  setMetric('st-exp',     isNaN(expectancy)?'—':`${expectancy>=0?'+':''}$${Math.abs(expectancy).toFixed(2)}`);
+  setMetric('st-beststreak',  bestStreak>0?`${bestStreak}W`:'—',  bestStreak>0?'win-col':'');
+  setMetric('st-worststreak', worstStreak>0?`${worstStreak}L`:'—', worstStreak>0?'loss-col':'');
+  setMetric('st-avgr', `${avgR>=0?'+':''}${avgR.toFixed(2)}R`);
+  document.getElementById('st-total').textContent = total;
+
+  // Render daily chart
+  renderStatsChart(trades);
+
+  // Perf rows
   const buildPerfRows=(groupKey,elId)=>{
     const groups={};
-    trades.forEach(t=>{ const k=t[groupKey]?(t[groupKey].charAt(0).toUpperCase()+t[groupKey].slice(1)):'Other'; if(!groups[k])groups[k]={wins:0,losses:0,be:0,pnl:0}; groups[k][t.result==='win'?'wins':t.result==='loss'?'losses':'be']++; groups[k].pnl+=t.pnl_usd||0; });
+    trades.forEach(t=>{ const k=t[groupKey]?(t[groupKey].charAt(0).toUpperCase()+t[groupKey].slice(1)):'Other'; if(!groups[k])groups[k]={wins:0,losses:0,be:0,pnl:0,r:0}; groups[k][t.result==='win'?'wins':t.result==='loss'?'losses':'be']++; groups[k].pnl+=t.pnl_usd||0; groups[k].r+=t.r_value||0; });
     document.getElementById(elId).innerHTML=Object.entries(groups).map(([name,d])=>{ const t=d.wins+d.losses+d.be,w=t>0?Math.round(d.wins/t*100):0,pnlStr=d.pnl>=0?`+$${d.pnl.toFixed(2)}`:`-$${Math.abs(d.pnl).toFixed(2)}`; return `<div class="perf-row"><div class="perf-name">${name}</div><div class="perf-meta"><span class="perf-wr">${w}% WR</span><span class="perf-r ${d.pnl>=0?'win-col':'loss-col'}">${pnlStr}</span><span class="perf-count">${t} trades</span></div></div>`; }).join('');
   };
   buildPerfRows('model','model-stats'); buildPerfRows('session','session-stats'); buildPerfRows('account','account-stats');
+}
+
+function renderStatsChart(trades) {
+  const canvas  = document.getElementById('stats-cumulative-chart');
+  const emptyEl = document.getElementById('stats-chart-empty');
+  if (!canvas) return;
+
+  if (!trades || trades.length===0) {
+    canvas.style.display='none'; emptyEl.style.display='flex'; return;
+  }
+  canvas.style.display='block'; emptyEl.style.display='none';
+
+  const sorted = [...trades].sort((a,b)=>new Date(a.date)-new Date(b.date));
+  const labels=[], dataUsd=[], dataR=[];
+  let cumUsd=0, cumR=0;
+  sorted.forEach(t=>{
+    cumUsd += t.pnl_usd||0;
+    cumR   += t.r_value||0;
+    labels.push(new Date(t.date+'T00:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short'}));
+    dataUsd.push(parseFloat(cumUsd.toFixed(2)));
+    dataR.push(parseFloat(cumR.toFixed(2)));
+  });
+
+  const values = statsChartMode==='usd' ? dataUsd : dataR;
+  const total  = values[values.length-1] || 0;
+  const isDark = document.documentElement.getAttribute('data-theme')==='dark';
+  const accentColor = isDark ? '#4ade80' : '#5a6e42';
+  const fillColor   = isDark ? 'rgba(74,222,128,0.08)' : 'rgba(90,110,66,0.08)';
+  const tickColor   = isDark ? '#4a4a4a' : '#8a8478';
+  const gridColor   = isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)';
+  const labelFmt    = statsChartMode==='usd'
+    ? v=>(v>=0?`+$${v.toFixed(0)}`:`-$${Math.abs(v).toFixed(0)}`)
+    : v=>(v>=0?`+${v.toFixed(2)}R`:`${v.toFixed(2)}R`);
+
+  if(statsChart) statsChart.destroy();
+  statsChart = new Chart(canvas, {
+    type: 'line',
+    data: { labels, datasets:[{
+      data: values,
+      borderColor: accentColor,
+      borderWidth: 2,
+      pointRadius: 0,
+      pointHoverRadius: 4,
+      pointHoverBackgroundColor: accentColor,
+      fill: true,
+      backgroundColor: fillColor,
+      tension: 0.3
+    }]},
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins:{ legend:{display:false}, tooltip:{callbacks:{label:ctx=>labelFmt(ctx.raw)}} },
+      scales:{
+        x:{ticks:{color:tickColor,font:{size:9,family:'DM Mono'},maxTicksLimit:8,maxRotation:0},grid:{color:gridColor}},
+        y:{ticks:{color:tickColor,font:{size:9,family:'DM Mono'},callback:labelFmt},grid:{color:gridColor}}
+      }
+    }
+  });
+}
+
+function switchStatsChart(mode) {
+  statsChartMode = mode;
+  document.getElementById('stats-toggle-usd').classList.toggle('active', mode==='usd');
+  document.getElementById('stats-toggle-r').classList.toggle('active', mode==='r');
+  renderStatsChart(getAccountTrades());
+}
+
+// ── STARTING BALANCE ──────────────────────────────────────────
+function saveStartingBalance() {
+  const input = document.getElementById('starting-balance-input');
+  const msg   = document.getElementById('starting-balance-msg');
+  const val   = parseFloat(input.value);
+  if (!input.value || isNaN(val) || val <= 0) {
+    msg.textContent='Please enter a valid positive number.'; msg.className='auth-msg error';
+    setTimeout(()=>{msg.textContent='';msg.className='auth-msg';},3000); return;
+  }
+  localStorage.setItem('nxuu_starting_balance', val.toString());
+  msg.textContent='Saved!'; msg.className='auth-msg success';
+  setTimeout(()=>{msg.textContent='';msg.className='auth-msg';},3000);
 }
 
 // ── LEADERBOARD ───────────────────────────────────────────────
@@ -576,6 +735,9 @@ function renderSettings() {
   // Sync leaderboard opt-in
   const optIn = localStorage.getItem('nxuu_lb_optin')==='true';
   const lb = document.getElementById('lb-opt-in'); if(lb) lb.checked=optIn;
+  // Populate starting balance
+  const sbInput = document.getElementById('starting-balance-input');
+  if(sbInput) sbInput.value = localStorage.getItem('nxuu_starting_balance') || '';
 }
 
 async function addStep() {
